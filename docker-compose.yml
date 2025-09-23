@@ -1,0 +1,46 @@
+services:
+  postgres:
+    container_name: postgres-instance
+    image: "postgres:15-alpine"
+    volumes:
+      - "./database/postgres-data:/var/lib/postgresql/data:rw"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: "gateway"
+      POSTGRES_USER: "gateway_user"
+      POSTGRES_PASSWORD: "gateway_password"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_user -d gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    container_name: redis-instance
+    image: "redis:7-alpine"
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  gateway:
+    container_name: gateway
+    build: .
+    environment:
+      - DATABASE_URL=postgres://gateway_user:gateway_password@postgres:5432/gateway?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
