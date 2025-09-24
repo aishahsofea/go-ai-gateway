@@ -21,8 +21,11 @@ func main() {
 		port = "8080"
 	}
 
-	// TODO: Replace with your actual database connection string
-	newDB, err := db.NewDB(context.Background(), "postgres://username:password@localhost:5432/databasename?sslmode=disable")
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+	newDB, err := db.NewDB(context.Background(), dbURL)
 
 	if err != nil {
 		log.Fatalf("could not create new db: %v", err)
@@ -30,6 +33,7 @@ func main() {
 
 	err = db.MigrateFS(newDB, migrations.FS, ".")
 	if err != nil {
+		log.Fatalf("could not run migrations: %v", err)
 		panic(err)
 	}
 

@@ -25,14 +25,17 @@ func Migrate(db *DB, dir string) error {
 
 	sqlDB := stdlib.OpenDBFromPool(db.Pool)
 
+	// ensure there is no leak when there is a panic
+	defer func() {
+		err := sqlDB.Close()
+		if err != nil {
+			fmt.Printf("error closing sqlDB: %v\n", err)
+		}
+	}()
+
 	err = goose.Up(sqlDB, dir)
 	if err != nil {
 		return fmt.Errorf("error running goose.Up: %w", err)
-	}
-
-	err = sqlDB.Close()
-	if err != nil {
-		return fmt.Errorf("error closing sqlDB: %w", err)
 	}
 
 	return nil
