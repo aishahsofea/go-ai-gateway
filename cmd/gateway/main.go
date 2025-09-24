@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/aishahsofea/go-ai-gateway/internal/db"
+	"github.com/aishahsofea/go-ai-gateway/migrations"
 )
 
 func main() {
@@ -16,6 +19,18 @@ func main() {
 
 	if port == "" {
 		port = "8080"
+	}
+
+	// TODO: Replace with your actual database connection string
+	newDB, err := db.NewDB(context.Background(), "postgres://username:password@localhost:5432/databasename?sslmode=disable")
+
+	if err != nil {
+		log.Fatalf("could not create new db: %v", err)
+	}
+
+	err = db.MigrateFS(newDB, migrations.FS, ".")
+	if err != nil {
+		panic(err)
 	}
 
 	mux := http.NewServeMux()
@@ -41,7 +56,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err := server.Shutdown(ctx)
+	err = server.Shutdown(ctx)
 
 	if err != nil {
 		log.Fatalf("Could not gracefully shut down the server: %v", err)

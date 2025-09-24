@@ -5,7 +5,7 @@ FROM golang:1.25-alpine AS builder
 # set working directory
 WORKDIR /app
 
-# copy go mod file better caching
+# copy go mod file for better caching
 COPY go.mod go.sum ./
 
 # download dependencies
