@@ -25,8 +25,8 @@ func main() {
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL environment variable is required")
 	}
-	newDB, err := db.NewDB(context.Background(), dbURL)
 
+	newDB, err := db.NewDB(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("could not create new db: %v", err)
 	}

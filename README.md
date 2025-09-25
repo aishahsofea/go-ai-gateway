@@ -12,3 +12,9 @@
    ```bash
    curl http://localhost:8080/health
    ```
+
+### How to access the database
+
+```bash
+docker compose exec postgres psql -h localhost -p 5432 -U gateway_user -d gateway
+```
