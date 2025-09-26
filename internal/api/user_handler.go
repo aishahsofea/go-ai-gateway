@@ -1,10 +1,12 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -56,7 +58,7 @@ func (h *AuthHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		h.logger.Printf("ERROR: could not decode register request: %v", err)
-		// TODO: WriteJSON
+		utils.WriteJSON(w, http.StatusBadRequest, utils.Envelope{"error": "invalid request payload"})
 		return
 	}
 
@@ -126,9 +128,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.userRepo.GetUserByEmail(r.Context(), req.Email)
+	if err == sql.ErrNoRows {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
 	if err != nil {
 		h.logger.Printf("ERROR: could not find user by email: %v", err)
-		utils.WriteJSON(w, http.StatusNotFound, utils.Envelope{"error": "user not found"})
+		utils.WriteJSON(w, http.StatusInternalServerError, utils.Envelope{"error": "internal server error"})
 		return
 	}
 
@@ -164,16 +171,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, utils.Envelope{"data": response})
 }
 
-var secretKey = []byte("secret-key")
-
 func (h *AuthHandler) generateJWT(user *models.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
+			"sub":      user.ID,
 			"username": user.Email,
 			"exp":      time.Now().Add(time.Hour * 24).Unix(),
 		})
 
-	tokenString, err := token.SignedString(secretKey)
+	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
 	if err != nil {
 		return "", err
 	}
