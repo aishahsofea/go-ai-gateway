@@ -31,7 +31,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) erro
 		query,
 		user.ID,
 		user.Email,
-		user.PasswordHash,
+		user.Password.Hash,
 		user.Role,
 		user.CreatedAt,
 		user.UpdatedAt,
@@ -62,7 +62,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
-		&user.PasswordHash,
+		&user.Password.Hash,
 		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,

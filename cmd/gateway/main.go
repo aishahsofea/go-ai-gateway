@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aishahsofea/go-ai-gateway/internal/auth"
+	"github.com/aishahsofea/go-ai-gateway/internal/api"
 	"github.com/aishahsofea/go-ai-gateway/internal/db"
 	"github.com/aishahsofea/go-ai-gateway/migrations"
 )
@@ -41,11 +41,12 @@ func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	userRepo := db.NewUserRepository(newDB)
 
-	authHandler := auth.NewAuthHandler(userRepo, logger)
+	authHandler := api.NewAuthHandler(userRepo, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthCheck)
-	mux.HandleFunc("POST /users", authHandler.Register)
+	mux.HandleFunc("POST /users", authHandler.RegisterUser)
+	mux.HandleFunc("POST /users/login", authHandler.Login)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
