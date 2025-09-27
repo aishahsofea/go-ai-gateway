@@ -55,6 +55,8 @@ var (
 var AnonymousUser = &User{}
 
 func (u *User) IsAnonymous() bool {
+	if u == nil {
+		return true
+	}
 	return u == AnonymousUser
-
 }

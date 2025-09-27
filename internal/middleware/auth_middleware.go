@@ -52,14 +52,20 @@ func Authenticate(next http.Handler) http.Handler {
 
 		bearerToken := strings.TrimPrefix(authHeader, "Bearer ")
 
+		// Pre-check for SECRET
+		secret := os.Getenv("SECRET")
+		if secret == "" {
+			utils.WriteJSON(w, http.StatusUnauthorized, utils.Envelope{"error": "server misconfiguration: missing JWT secret"})
+			return
+		}
+
 		// Validate JWT token
 		token, err := jwt.Parse(bearerToken, func(token *jwt.Token) (interface{}, error) {
-
 			_, ok := token.Method.(*jwt.SigningMethodHMAC)
 			if !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(os.Getenv("SECRET")), nil
+			return []byte(secret), nil
 		})
 
 		if err != nil || !token.Valid {
