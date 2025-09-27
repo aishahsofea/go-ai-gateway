@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/aishahsofea/go-ai-gateway/internal/api"
 	"github.com/aishahsofea/go-ai-gateway/internal/db"
+	"github.com/aishahsofea/go-ai-gateway/internal/middleware"
 	"github.com/aishahsofea/go-ai-gateway/migrations"
 )
 
@@ -47,6 +49,7 @@ func main() {
 	mux.HandleFunc("GET /health", healthCheck)
 	mux.HandleFunc("POST /users", authHandler.RegisterUser)
 	mux.HandleFunc("POST /users/login", authHandler.Login)
+	mux.Handle("GET /protected", middleware.Authenticate(http.HandlerFunc(protectedHandler)))
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
@@ -91,4 +94,12 @@ func startServer(server *http.Server, port string) {
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Could not start server: %s", err)
 	}
+}
+
+func protectedHandler(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Access granted!",
+		"user_id": user.ID,
+	})
 }
