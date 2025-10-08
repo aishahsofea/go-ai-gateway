@@ -1,11 +1,29 @@
 services:
-  postgres:
-    container_name: postgres-instance
+  db:
+    container_name: gatewayDB
     image: "postgres:15-alpine"
     volumes:
       - "./database/postgres-data:/var/lib/postgresql/data:rw"
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_DB: "gateway"
+      POSTGRES_USER: "gateway_user"
+      POSTGRES_PASSWORD: "gateway_password"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_user -d gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  test_db:
+    container_name: gatewayDB_test
+    image: "postgres:15-alpine"
+    volumes:
+      - "./database/postgres-test-data:/var/lib/postgresql/data:rw"
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: "gateway"
       POSTGRES_USER: "gateway_user"
@@ -34,10 +52,10 @@ services:
     container_name: gateway
     build: .
     environment:
-      - DATABASE_URL=postgres://gateway_user:gateway_password@postgres:5432/gateway?sslmode=disable
+      - DATABASE_URL=postgres://gateway_user:gateway_password@db:5432/gateway?sslmode=disable
       - REDIS_URL=redis://redis:6379
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy

@@ -1,0 +1,50 @@
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/aishahsofea/go-ai-gateway/internal/db"
+	"github.com/aishahsofea/go-ai-gateway/internal/testutils"
+)
+
+func TestUserRegistration(t *testing.T) {
+	// setup test DB
+	testDB := testutils.SetupTestDB(t)
+	defer testutils.CleanupTestDB(t, testDB)
+
+	// create user repository and auth handler
+	userRepo := db.NewUserRepository(testDB)
+	authHandler := NewAuthHandler(userRepo, nil)
+
+	requestBody := map[string]string{
+		"email":    "test@example.com",
+		"password": "password123",
+	}
+
+	// convert to JSON
+	jsonBody, err := json.Marshal(requestBody)
+	if err != nil {
+		t.Fatalf("could not marshal request body: %v", err)
+	}
+
+	// create HTTP request
+	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	// create response recorder
+	w := httptest.NewRecorder()
+
+	// call the handler
+	authHandler.RegisterUser(w, req)
+
+	// check response
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status %d, got %d", http.StatusCreated, w.Code)
+	}
+
+	// TODO: parse response and verify user data
+}
