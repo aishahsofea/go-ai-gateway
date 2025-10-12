@@ -13,6 +13,7 @@ import (
 
 	"github.com/aishahsofea/go-ai-gateway/internal/api"
 	"github.com/aishahsofea/go-ai-gateway/internal/db"
+	"github.com/aishahsofea/go-ai-gateway/internal/gateway"
 	"github.com/aishahsofea/go-ai-gateway/internal/middleware"
 	"github.com/aishahsofea/go-ai-gateway/migrations"
 )
@@ -45,11 +46,15 @@ func main() {
 
 	authHandler := api.NewAuthHandler(userRepo, logger)
 
+	gatewayConfig := gateway.DefaultConfig()
+	proxy := gateway.NewProxy(gatewayConfig)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthCheck)
 	mux.HandleFunc("POST /users", authHandler.RegisterUser)
 	mux.HandleFunc("POST /users/login", authHandler.Login)
 	mux.Handle("GET /protected", middleware.Authenticate(http.HandlerFunc(protectedHandler)))
+	mux.Handle("/", proxy)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),

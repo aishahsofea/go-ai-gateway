@@ -19,6 +19,22 @@
 docker compose exec postgres psql -h localhost -p 5432 -U gateway_user -d gateway
 ```
 
+## Running Tests
+
+### Gateway Tests
+
+Make the test script executable:
+
+```bash
+chmod +x scripts/run-tests.sh
+```
+
+Run the tests:
+
+```bash
+./scripts/run-tests.sh
+```
+
 ## Troubleshooting
 
 ### Docker Issues

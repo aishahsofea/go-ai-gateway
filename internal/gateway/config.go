@@ -22,11 +22,11 @@ func DefaultConfig() *GatewayConfig {
 		Routes: []Route{
 			{
 				Pattern: "/api/users/*",
-				Target:  "http://localhost:8001", // TODO: create mock service
+				Target:  "http://host.docker.internal:8001", // TODO: create mock service
 			},
 			{
 				Pattern: "/api/products/*",
-				Target:  "http://localhost:8002",
+				Target:  "http://host.docker.internal:8002",
 			},
 			// Existing routes stay on this service
 			{
