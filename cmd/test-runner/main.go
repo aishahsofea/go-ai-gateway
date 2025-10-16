@@ -22,47 +22,16 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// start mock services
-	wg.Add(2)
+	wg.Add(5) // 3 user services, 2 product services
 
-	// start User Service
-	go func() {
-		defer wg.Done()
-		server := &http.Server{
-			Addr:    ":8001",
-			Handler: testutils.MockUserServiceHandler(),
-		}
+	// start User Services
+	go startMockService(&wg, ctx, "8001", "user-service-1", testutils.MockUserServiceHandler())
+	go startMockService(&wg, ctx, "8011", "user-service-2", testutils.MockUserServiceHandler())
+	go startMockService(&wg, ctx, "8022", "user-service-3", testutils.MockUserServiceHandler())
 
-		go func() {
-			<-ctx.Done()
-			server.Shutdown(context.Background())
-		}()
-
-		log.Println("Mock User Service starting on :8001")
-		err := server.ListenAndServe()
-		if err != http.ErrServerClosed {
-			log.Printf("User Service error: %v", err)
-		}
-	}()
-
-	// start Product Service
-	go func() {
-		defer wg.Done()
-		server := &http.Server{
-			Addr:    ":8002",
-			Handler: testutils.MockProductServiceHandler(),
-		}
-
-		go func() {
-			<-ctx.Done()
-			server.Shutdown(context.Background())
-		}()
-
-		log.Println("Mock Product Service starting on :8002")
-		err := server.ListenAndServe()
-		if err != http.ErrServerClosed {
-			log.Printf("Product Service error: %v", err)
-		}
-	}()
+	// start Product Services
+	go startMockService(&wg, ctx, "8002", "product-service-1", testutils.MockProductServiceHandler())
+	go startMockService(&wg, ctx, "8012", "product-service-2", testutils.MockProductServiceHandler())
 
 	// wait for services to start
 	log.Println("⏳ Waiting for services to start...")
@@ -89,4 +58,24 @@ func main() {
 	cancel()
 	wg.Wait()
 	log.Println("Test environment stopped. Goodbye!")
+}
+
+func startMockService(wg *sync.WaitGroup, ctx context.Context, port, name string, handler http.Handler) {
+	defer wg.Done()
+
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: handler,
+	}
+
+	go func() {
+		<-ctx.Done()
+		server.Shutdown(context.Background())
+	}()
+
+	log.Printf("Mock %s starting on :%s", name, port)
+	err := server.ListenAndServe()
+	if err != http.ErrServerClosed {
+		log.Printf("%s error: %v", name, err)
+	}
 }

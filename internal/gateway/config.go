@@ -5,11 +5,26 @@ import (
 	"strings"
 )
 
-// Gateway route configuration
+type LoadBalancerStrategy string
+
+const (
+	RoundRobin       LoadBalancerStrategy = "round_robin"
+	LeastConnections LoadBalancerStrategy = "least_connections"
+	Random           LoadBalancerStrategy = "random"
+)
+
+type Backend struct {
+	URL     string `json:"url"`
+	Healthy bool   `json:"healthy"`
+	Weight  int    `json:"weight"`
+}
+
 type Route struct {
-	Pattern     string `json:"pattern"`
-	Target      string `json:"target"`
-	StripPrefix string `json:"stripPrefix"`
+	Pattern      string               `json:"pattern"`
+	Target       string               `json:"target"`
+	Backends     []Backend            `json:"backends"`
+	LoadBalancer LoadBalancerStrategy `json:"load_balancer"`
+	StripPrefix  string               `json:"strip_prefix"`
 }
 
 type GatewayConfig struct {
@@ -22,11 +37,20 @@ func DefaultConfig() *GatewayConfig {
 		Routes: []Route{
 			{
 				Pattern: "/api/users/*",
-				Target:  "http://host.docker.internal:8001", // TODO: create mock service
+				Backends: []Backend{
+					{URL: "http://host.docker.internal:8001", Healthy: true, Weight: 1},
+					{URL: "http://host.docker.internal:8011", Healthy: true, Weight: 1},
+					{URL: "http://host.docker.internal:8022", Healthy: true, Weight: 1},
+				},
+				LoadBalancer: RoundRobin,
 			},
 			{
 				Pattern: "/api/products/*",
-				Target:  "http://host.docker.internal:8002",
+				Backends: []Backend{
+					{URL: "http://host.docker.internal:8002", Healthy: true, Weight: 1},
+					{URL: "http://host.docker.internal:8012", Healthy: true, Weight: 1},
+				},
+				LoadBalancer: RoundRobin,
 			},
 			// Existing routes stay on this service
 			{
@@ -58,4 +82,19 @@ func matchesPattern(pattern, path string) bool {
 		return strings.HasPrefix(path, prefix)
 	}
 	return pattern == path
+}
+
+func (r *Route) GetBackends() []Backend {
+	if len(r.Backends) > 0 {
+		return r.Backends
+	}
+
+	// fallback to single target as backend (backward compatibility)
+	if r.Target != "" {
+		return []Backend{
+			{URL: r.Target, Healthy: true, Weight: 1},
+		}
+	}
+
+	return []Backend{}
 }

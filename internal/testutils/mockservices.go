@@ -21,6 +21,8 @@ func MockUserServiceHandler() http.Handler {
 			"headers": map[string]string{
 				"X-Forwarded-By":    r.Header.Get("X-Forwarded-By"),
 				"X-Gateway-Version": r.Header.Get("X-Gateway-Version"),
+				"X-Backend-URL":     r.Header.Get("X-Backend-URL"),
+				"X-Load-Balancer":   r.Header.Get("X-Load-Balancer"),
 			},
 		}
 
@@ -58,6 +60,8 @@ func MockProductServiceHandler() http.Handler {
 			"headers": map[string]string{
 				"X-Forwarded-By":    r.Header.Get("X-Forwarded-By"),
 				"X-Gateway-Version": r.Header.Get("X-Gateway-Version"),
+				"X-Backend-URL":     r.Header.Get("X-Backend-URL"),
+				"X-Load-Balancer":   r.Header.Get("X-Load-Balancer"),
 			},
 		}
 
