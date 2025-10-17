@@ -14,9 +14,10 @@ const (
 )
 
 type Backend struct {
-	URL     string `json:"url"`
-	Healthy bool   `json:"healthy"`
-	Weight  int    `json:"weight"`
+	URL            string          `json:"url"`
+	Healthy        bool            `json:"healthy"`
+	Weight         int             `json:"weight"`
+	CircuitBreaker *CircuitBreaker `json:"_"`
 }
 
 type Route struct {
@@ -31,24 +32,50 @@ type GatewayConfig struct {
 	Routes []Route `json:"routes"`
 }
 
-// Create a basic gateway configuration
 func DefaultConfig() *GatewayConfig {
+	cbConfig := DefaultCircuitBreakerConfig()
+
 	return &GatewayConfig{
 		Routes: []Route{
 			{
 				Pattern: "/api/users/*",
 				Backends: []Backend{
-					{URL: "http://host.docker.internal:8001", Healthy: true, Weight: 1},
-					{URL: "http://host.docker.internal:8011", Healthy: true, Weight: 1},
-					{URL: "http://host.docker.internal:8022", Healthy: true, Weight: 1},
+					{
+						URL:            "http://host.docker.internal:8001",
+						Healthy:        true,
+						Weight:         1,
+						CircuitBreaker: NewCircuitBreaker(cbConfig),
+					},
+					{
+						URL:            "http://host.docker.internal:8011",
+						Healthy:        true,
+						Weight:         1,
+						CircuitBreaker: NewCircuitBreaker(cbConfig),
+					},
+					{
+						URL:            "http://host.docker.internal:8022",
+						Healthy:        true,
+						Weight:         1,
+						CircuitBreaker: NewCircuitBreaker(cbConfig),
+					},
 				},
 				LoadBalancer: RoundRobin,
 			},
 			{
 				Pattern: "/api/products/*",
 				Backends: []Backend{
-					{URL: "http://host.docker.internal:8002", Healthy: true, Weight: 1},
-					{URL: "http://host.docker.internal:8012", Healthy: true, Weight: 1},
+					{
+						URL:            "http://host.docker.internal:8002",
+						Healthy:        true,
+						Weight:         1,
+						CircuitBreaker: NewCircuitBreaker(cbConfig),
+					},
+					{
+						URL:            "http://host.docker.internal:8012",
+						Healthy:        true,
+						Weight:         1,
+						CircuitBreaker: NewCircuitBreaker(cbConfig),
+					},
 				},
 				LoadBalancer: RoundRobin,
 			},

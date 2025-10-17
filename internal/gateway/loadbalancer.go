@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -111,7 +112,10 @@ func (lc *LeastConnectionsBalancer) DecrementConnections(url string) {
 func getHealthyBackends(backends []Backend) []Backend {
 	var healthy []Backend
 	for _, backend := range backends {
-		if backend.Healthy {
+		canRequest := backend.CircuitBreaker.CanRequest()
+		log.Printf("🔍 Backend %s: healthy=%v, canRequest=%v, state=%v",
+			backend.URL, backend.Healthy, canRequest, backend.CircuitBreaker.GetState())
+		if backend.Healthy && canRequest {
 			healthy = append(healthy, backend)
 		}
 	}

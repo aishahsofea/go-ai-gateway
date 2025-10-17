@@ -16,6 +16,16 @@ type Proxy struct {
 	mutex         sync.RWMutex
 }
 
+type statusTracker struct {
+	http.ResponseWriter
+	status int
+}
+
+func (st *statusTracker) WriteHeader(status int) {
+	st.status = status
+	st.ResponseWriter.WriteHeader(status)
+}
+
 func NewProxy(config *GatewayConfig) *Proxy {
 	return &Proxy{
 		config:        config,
@@ -62,7 +72,22 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.customizeRequest(req, route, backend, lb)
 	}
 
-	proxy.ServeHTTP(w, r)
+	statusTracker := &statusTracker{
+		ResponseWriter: w,
+		status:         200,
+	}
+	proxy.ServeHTTP(statusTracker, r)
+
+	if statusTracker.status >= 500 {
+		backend.CircuitBreaker.RecordFailure()
+		log.Printf("🔴 Circuit breaker recorded failure for %s (status: %d, failures: %v)",
+			backend.URL, statusTracker.status, backend.CircuitBreaker.GetStats())
+	} else {
+		backend.CircuitBreaker.RecordSuccess()
+		log.Printf("🟢 Circuit breaker recorded success for %s (status: %d)",
+			backend.URL, statusTracker.status)
+	}
+
 }
 
 func (p *Proxy) customizeRequest(req *http.Request, route *Route, backend *Backend, lb LoadBalancer) {
