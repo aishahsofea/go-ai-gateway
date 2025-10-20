@@ -91,6 +91,10 @@ func isRetryableError(err error) bool {
 		return false
 	}
 
+	if IsTimeoutError(err) {
+		return false
+	}
+
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}

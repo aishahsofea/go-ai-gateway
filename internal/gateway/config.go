@@ -92,6 +92,20 @@ func DefaultConfig() *GatewayConfig {
 	}
 }
 
+func LocalhostConfig() *GatewayConfig {
+	config := DefaultConfig()
+
+	// Replace host.docker.internal with localhost
+	for i := range config.Routes {
+		for j := range config.Routes[i].Backends {
+			url := config.Routes[i].Backends[j].URL
+			config.Routes[i].Backends[j].URL = strings.Replace(url, "host.docker.internal", "localhost", 1)
+		}
+	}
+
+	return config
+}
+
 // Finds matching route for a given path
 func (gc *GatewayConfig) MatchRoute(path string) (*Route, error) {
 	for _, route := range gc.Routes {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -46,8 +47,25 @@ func main() {
 
 	authHandler := api.NewAuthHandler(userRepo, logger)
 
+	requestTimeout := flag.Duration("request-timeout", 30*time.Second, "Overall request timeout")
+	backendTimeout := flag.Duration("backend-timeout", 5*time.Second, "Backend request timeout")
+	connectTimeout := flag.Duration("connect-timeout", 2*time.Second, "Connection timeout")
+	useLocalhost := flag.Bool("use-localhost", false, "Use localhost instead of host.docker.internal for backends")
+	flag.Parse()
+
+	timeoutConfig := gateway.TimeoutConfig{
+		RequestTimeout: *requestTimeout,
+		BackendTimeout: *backendTimeout,
+		ConnectTimeout: *connectTimeout,
+	}
+
 	gatewayConfig := gateway.DefaultConfig()
-	proxy := gateway.NewProxy(gatewayConfig)
+
+	if *useLocalhost {
+		gatewayConfig = gateway.LocalhostConfig()
+	}
+
+	proxy := gateway.NewProxyWithTimeouts(gatewayConfig, timeoutConfig)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthCheck)

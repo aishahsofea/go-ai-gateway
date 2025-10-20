@@ -15,15 +15,21 @@ type Proxy struct {
 	config        *GatewayConfig
 	loadBalancers map[string]LoadBalancer // Cache load balancers per route
 	retryConfig   RetryConfig
+	timeoutConfig TimeoutConfig
 	mutex         sync.RWMutex
 }
 
-func NewProxy(config *GatewayConfig) *Proxy {
+func NewProxyWithTimeouts(config *GatewayConfig, timeoutConfig TimeoutConfig) *Proxy {
 	return &Proxy{
 		config:        config,
 		loadBalancers: make(map[string]LoadBalancer),
 		retryConfig:   DefaultRetryConfig(),
+		timeoutConfig: timeoutConfig,
 	}
+}
+
+func NewProxy(config *GatewayConfig) *Proxy {
+	return NewProxyWithTimeouts(config, DefaultTimeoutConfig())
 }
 
 type statusTracker struct {
@@ -44,6 +50,11 @@ type bufferingResponseWriter struct {
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Gateway received request: %s %s", r.Method, r.URL.Path)
+
+	ctx, cancel := p.timeoutConfig.WithRequestTimeout(r.Context())
+	defer cancel()
+
+	r = r.WithContext(ctx)
 
 	route, err := p.config.MatchRoute(r.URL.Path)
 	if err != nil {
@@ -152,6 +163,11 @@ func (p *Proxy) selectBackend(route *Route, lb LoadBalancer) (*Backend, error) {
 func (p *Proxy) executeRequest(w http.ResponseWriter, r *http.Request, backend *Backend, route *Route, lb LoadBalancer) (int, error) {
 
 	log.Printf("Select backend: %s (strategy %s)", backend.URL, lb.String())
+
+	ctx, cancel := p.timeoutConfig.WithBackendTimeout(r.Context())
+	defer cancel()
+
+	r = r.WithContext(ctx)
 
 	targetURL, err := url.Parse(backend.URL)
 	if err != nil {
