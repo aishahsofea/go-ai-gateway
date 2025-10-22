@@ -16,16 +16,30 @@ type Proxy struct {
 	loadBalancers map[string]LoadBalancer // Cache load balancers per route
 	retryConfig   RetryConfig
 	timeoutConfig TimeoutConfig
+	bulkheads     map[string]*ServiceBulkhead
 	mutex         sync.RWMutex
 }
 
 func NewProxyWithTimeouts(config *GatewayConfig, timeoutConfig TimeoutConfig) *Proxy {
-	return &Proxy{
+	proxy := &Proxy{
 		config:        config,
 		loadBalancers: make(map[string]LoadBalancer),
 		retryConfig:   DefaultRetryConfig(),
 		timeoutConfig: timeoutConfig,
+		bulkheads:     make(map[string]*ServiceBulkhead),
 	}
+
+	// Initialize bulkheads for each route
+	bulkheadConfig := DefaultBulkheadConfig()
+	for _, route := range config.Routes {
+		for _, backend := range route.Backends {
+			if _, exists := proxy.bulkheads[backend.URL]; !exists {
+				proxy.bulkheads[backend.URL] = NewServiceBulkhead(bulkheadConfig)
+			}
+		}
+	}
+
+	return proxy
 }
 
 func NewProxy(config *GatewayConfig) *Proxy {
@@ -73,6 +87,16 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return 503, err
 		}
+
+		bulkhead := p.bulkheads[backend.URL]
+		log.Printf("🚧 Attempting to acquire bulkhead for %s, stats: %v", backend.URL, bulkhead.GetStats())
+
+		err = bulkhead.TryAcquire(r.Context())
+		if err != nil {
+			log.Printf("⚠️ Bulkhead rejected request to %s: %v", backend.URL, err)
+			return 503, fmt.Errorf("bulkhead limit reached: %w", err)
+		}
+		defer bulkhead.Release()
 
 		lcb, ok := lb.(*LeastConnectionsBalancer)
 		if ok {
