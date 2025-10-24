@@ -65,7 +65,7 @@ func main() {
 		gatewayConfig = gateway.LocalhostConfig()
 	}
 
-	proxy := gateway.NewProxyWithTimeouts(gatewayConfig, timeoutConfig)
+	proxy := gateway.NewProxy(gatewayConfig, timeoutConfig)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthCheck)
@@ -121,7 +121,7 @@ func startServer(server *http.Server, port string) {
 
 func protectedHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"message": "Access granted!",
 		"user_id": user.ID,
 	})

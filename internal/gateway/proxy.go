@@ -20,7 +20,7 @@ type Proxy struct {
 	mutex         sync.RWMutex
 }
 
-func NewProxyWithTimeouts(config *GatewayConfig, timeoutConfig TimeoutConfig) *Proxy {
+func NewProxy(config *GatewayConfig, timeoutConfig TimeoutConfig) *Proxy {
 	proxy := &Proxy{
 		config:        config,
 		loadBalancers: make(map[string]LoadBalancer),
@@ -40,10 +40,6 @@ func NewProxyWithTimeouts(config *GatewayConfig, timeoutConfig TimeoutConfig) *P
 	}
 
 	return proxy
-}
-
-func NewProxy(config *GatewayConfig) *Proxy {
-	return NewProxyWithTimeouts(config, DefaultTimeoutConfig())
 }
 
 type statusTracker struct {
