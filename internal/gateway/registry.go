@@ -73,3 +73,14 @@ func (sr *ServiceRegistry) GetServices(route string) []*ServiceInstance {
 	}
 	return instances
 }
+
+func (sr *ServiceRegistry) GetAllRoutes() []string {
+	sr.mutex.RLock()
+	defer sr.mutex.RUnlock()
+
+	routes := make([]string, 0, len(sr.services))
+	for route := range sr.services {
+		routes = append(routes, route)
+	}
+	return routes
+}
