@@ -67,6 +67,8 @@ func main() {
 
 	proxy := gateway.NewProxy(gatewayConfig, timeoutConfig)
 	registry := gateway.NewServiceRegistry()
+	healthConfig := gateway.DefaultHealthCheckConfig()
+	healthChecker := gateway.NewHealthChecker(registry, healthConfig)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthCheck)
@@ -81,6 +83,8 @@ func main() {
 
 	mux.Handle("GET /protected", middleware.Authenticate(http.HandlerFunc(protectedHandler)))
 	mux.Handle("/", proxy)
+
+	go healthChecker.Start(context.Background())
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),

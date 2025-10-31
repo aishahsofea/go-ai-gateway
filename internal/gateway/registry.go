@@ -84,3 +84,17 @@ func (sr *ServiceRegistry) GetAllRoutes() []string {
 	}
 	return routes
 }
+
+func (sr *ServiceRegistry) UpdateServiceHealth(route, serviceID, health string) error {
+	sr.mutex.Lock()
+	defer sr.mutex.Unlock()
+
+	if services, exists := sr.services[route]; exists {
+		if instance, exists := services[serviceID]; exists {
+			instance.Health = health
+			instance.LastSeen = time.Now()
+			return nil
+		}
+	}
+	return fmt.Errorf("service %s not found for route %s", serviceID, route)
+}

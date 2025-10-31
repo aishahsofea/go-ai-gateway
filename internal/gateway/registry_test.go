@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestServiceRegistry(t *testing.T) {
@@ -130,6 +131,70 @@ func TestRegistryHandlers(t *testing.T) {
 
 		if response["data"] == nil {
 			t.Error("Expected 'data' field in response")
+		}
+	})
+}
+
+func TestHealthChecker(t *testing.T) {
+	registry := NewServiceRegistry()
+	config := HealthCheckConfig{
+		Interval:       100 * time.Millisecond, // Fast for testing
+		Timeout:        1 * time.Second,
+		FailureLimit:   2, // Lower for faster testing
+		HealthEndpoint: "/health",
+	}
+	healthChecker := NewHealthChecker(registry, config)
+
+	t.Run("HealthyService", func(t *testing.T) {
+		// Create a test HTTP server that returns 200
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		// Register service with test server URL
+		instance := &ServiceInstance{
+			ID:     "test-healthy",
+			URL:    server.URL,
+			Route:  "/api/test/*",
+			Health: "unknown",
+		}
+		registry.RegisterService(instance)
+
+		// Check service health
+		isHealthy := healthChecker.checkService(instance)
+		if !isHealthy {
+			t.Error("Expected service to be healthy")
+		}
+
+		// Update health and verify
+		healthChecker.updateServiceHealth(instance, isHealthy)
+		services := registry.GetServices("/api/test/*")
+		if services[0].Health != "healthy" {
+			t.Errorf("Expected health 'healthy', got '%s'", services[0].Health)
+		}
+	})
+
+	t.Run("UnhealthyService", func(t *testing.T) {
+		// Register service with non-existent URL
+		instance := &ServiceInstance{
+			ID:     "test-unhealthy",
+			URL:    "http://localhost:99999", // Non-existent port
+			Route:  "/api/broken/*",
+			Health: "healthy",
+		}
+		registry.RegisterService(instance)
+
+		// Simulate multiple failures
+		for i := 0; i < config.FailureLimit; i++ {
+			isHealthy := healthChecker.checkService(instance)
+			healthChecker.updateServiceHealth(instance, isHealthy)
+		}
+
+		// Verify service marked as unhealthy
+		services := registry.GetServices("/api/broken/*")
+		if services[0].Health != "unhealthy" {
+			t.Errorf("Expected health 'unhealthy', got '%s'", services[0].Health)
 		}
 	})
 }
