@@ -79,7 +79,7 @@ func (sr *ServiceRegistry) GetAllServicesHandler(w http.ResponseWriter, r *http.
 }
 
 func (sr *ServiceRegistry) GetServicesByRouteHandler(w http.ResponseWriter, r *http.Request) {
-	route := r.URL.Query().Get("route")
+	route := r.PathValue("route")
 
 	if route == "" {
 		http.Error(w, "missing route parameter", http.StatusBadRequest)

@@ -66,11 +66,19 @@ func main() {
 	}
 
 	proxy := gateway.NewProxy(gatewayConfig, timeoutConfig)
+	registry := gateway.NewServiceRegistry()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthCheck)
 	mux.HandleFunc("POST /users", authHandler.RegisterUser)
 	mux.HandleFunc("POST /users/login", authHandler.Login)
+
+	// Registry endpoints
+	mux.HandleFunc("POST /registry/register", registry.RegisterHandler)
+	mux.HandleFunc("DELETE /registry/deregister/{id}", registry.DeregisterHandler)
+	mux.HandleFunc("GET /registry/services", registry.GetAllServicesHandler)
+	mux.HandleFunc("GET /registry/services/{route}", registry.GetServicesByRouteHandler)
+
 	mux.Handle("GET /protected", middleware.Authenticate(http.HandlerFunc(protectedHandler)))
 	mux.Handle("/", proxy)
 
